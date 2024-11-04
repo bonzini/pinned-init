@@ -198,6 +198,7 @@ fn even_failing_box() {
     assert!(matches!(Box::try_init(EvenU64::new2(3)), Err(Error)));
 }
 
+#[cfg(feature = "arc")]
 #[test]
 fn even_failing_arc() {
     assert!(matches!(Arc::try_pin_init(EvenU64::new2(5)), Err(Error)));
@@ -245,7 +246,7 @@ struct BigStruct {
     oth: MaybeUninit<u8>,
 }
 
-#[cfg(not(miri))]
+#[cfg(all(feature = "arc", not(miri)))]
 #[test]
 fn big_struct_arc() {
     let x = Arc::init(init!(BigStruct {
@@ -265,7 +266,7 @@ fn big_struct_box() {
     println!("{x:?}");
 }
 
-#[cfg(not(miri))]
+#[cfg(all(feature = "arc", not(miri)))]
 #[test]
 fn with_big_struct() {
     let buf = Arc::pin_init(CMutex::new(RingBuffer::<BigStruct, 64>::new())).unwrap();

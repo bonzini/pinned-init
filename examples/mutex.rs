@@ -161,8 +161,12 @@ impl WaitEntry {
     }
 }
 
+#[cfg(not(feature = "arc"))]
+fn main() {}
+
 #[allow(dead_code)]
 #[cfg_attr(test, test)]
+#[cfg(feature = "arc")]
 fn main() {
     let mtx: Pin<Arc<CMutex<usize>>> = Arc::pin_init(CMutex::new(0)).unwrap();
     let mut handles = vec![];

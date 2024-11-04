@@ -18,9 +18,10 @@ paste = "1.0"
 pinned-init-macro = { path = "./pinned-init-macro", version = "=0.0.5" }
 
 [features]
-default = ["std"]
+default = ["std", "arc"]
 std = ["alloc"]
 alloc = []
+arc = ["alloc"]
 
 [dev-dependencies]
 libc = "0.2"

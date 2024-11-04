@@ -18,12 +18,12 @@
 //!
 //! This library allows you to do in-place initialization safely.
 //!
-//! ## Nightly Needed for `alloc` and `std` features
+//! ## Nightly Needed for `alloc`, `arc` and `std` features
 //!
-//! This library requires unstable features when the `alloc` or `std` features are enabled and thus
+//! This library requires unstable features when the `alloc`, `arc` or `std` features are enabled and thus
 //! can only be used with a nightly compiler. The internally used features are:
-//! - `allocator_api`
-//! - `get_mut_unchecked`
+//! - `allocator_api` for the `alloc` feature
+//! - `get_mut_unchecked` for the `arc` feature
 //!
 //! When enabling the `alloc` or `std` feature, the user will be required to activate these features:
 //! - `allocator_api`
@@ -236,15 +236,17 @@
 #![forbid(missing_docs, unsafe_op_in_unsafe_fn)]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "alloc", feature(allocator_api))]
-#![cfg_attr(feature = "alloc", feature(get_mut_unchecked))]
+#![cfg_attr(feature = "arc", feature(get_mut_unchecked))]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::boxed::Box;
-#[cfg(feature = "alloc")]
+#[cfg(all(feature = "alloc", not(feature = "std"), feature = "arc"))]
 use alloc::sync::Arc;
+#[cfg(all(feature = "std", feature = "arc"))]
+use std::sync::Arc;
 
 use core::{
     cell::UnsafeCell,
@@ -1222,7 +1224,7 @@ impl<T> InPlaceInit<T> for Box<T> {
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "arc")]
 impl<T> InPlaceInit<T> for Arc<T> {
     #[inline]
     fn try_pin_init<E>(init: impl PinInit<T, E>) -> Result<Pin<Self>, E>
@@ -1280,7 +1282,7 @@ impl<T> InPlaceWrite<T> for Box<MaybeUninit<T>> {
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "arc")]
 impl<T> InPlaceWrite<T> for Arc<MaybeUninit<T>> {
     type Initialized = Arc<T>;
 

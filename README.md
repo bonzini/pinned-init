@@ -26,12 +26,12 @@ it into it's final memory location.
 
 This library allows you to do in-place initialization safely.
 
-### Nightly Needed for `alloc` and `std` features
+### Nightly Needed for `alloc`, `arc` and `std` features
 
-This library requires unstable features when the `alloc` or `std` features are enabled and thus
+This library requires unstable features when the `alloc`, `arc` or `std` features are enabled and thus
 can only be used with a nightly compiler. The internally used features are:
-- `allocator_api`
-- `get_mut_unchecked`
+- `allocator_api` for the `alloc` feature
+- `get_mut_unchecked` for the `arc` feature
 
 When enabling the `alloc` or `std` feature, the user will be required to activate these features:
 - `allocator_api`
