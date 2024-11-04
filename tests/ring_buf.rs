@@ -193,10 +193,14 @@ fn even_stack() {
 }
 
 #[test]
-fn even_failing() {
+fn even_failing_box() {
     assert!(matches!(Box::try_pin_init(EvenU64::new2(3)), Err(Error)));
-    assert!(matches!(Arc::try_pin_init(EvenU64::new2(5)), Err(Error)));
     assert!(matches!(Box::try_init(EvenU64::new2(3)), Err(Error)));
+}
+
+#[test]
+fn even_failing_arc() {
+    assert!(matches!(Arc::try_pin_init(EvenU64::new2(5)), Err(Error)));
     assert!(matches!(Arc::try_init(EvenU64::new2(5)), Err(Error)));
 }
 
@@ -243,12 +247,17 @@ struct BigStruct {
 
 #[cfg(not(miri))]
 #[test]
-fn big_struct() {
+fn big_struct_arc() {
     let x = Arc::init(init!(BigStruct {
         buf <- zeroed(),
         oth <- zeroed(),
     }));
     println!("{x:?}");
+}
+
+#[cfg(not(miri))]
+#[test]
+fn big_struct_box() {
     let x = Box::init(init!(BigStruct {
         buf <- zeroed(),
         oth <- zeroed(),
