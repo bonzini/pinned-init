@@ -194,14 +194,8 @@ fn even_stack() {
 
 #[test]
 fn even_failing() {
-    assert!(matches!(
-        Box::try_pin_init(EvenU64::new2(3)),
-        Err(Error)
-    ));
-    assert!(matches!(
-        Arc::try_pin_init(EvenU64::new2(5)),
-        Err(Error)
-    ));
+    assert!(matches!(Box::try_pin_init(EvenU64::new2(3)), Err(Error)));
+    assert!(matches!(Arc::try_pin_init(EvenU64::new2(5)), Err(Error)));
     assert!(matches!(Box::try_init(EvenU64::new2(3)), Err(Error)));
     assert!(matches!(Arc::try_init(EvenU64::new2(5)), Err(Error)));
 }
