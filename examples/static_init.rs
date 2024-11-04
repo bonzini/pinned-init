@@ -1,4 +1,4 @@
-#![feature(allocator_api)]
+#![cfg_attr(feature = "alloc", feature(allocator_api))]
 
 use core::{
     cell::{Cell, UnsafeCell},

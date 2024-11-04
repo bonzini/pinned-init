@@ -18,14 +18,17 @@
 //!
 //! This library allows you to do in-place initialization safely.
 //!
-//! ## Nightly Needed for `alloc`, `arc` and `std` features
+//! ## Nightly Needed for `alloc` and `arc` features
 //!
-//! This library requires unstable features when the `alloc`, `arc` or `std` features are enabled and thus
-//! can only be used with a nightly compiler. The internally used features are:
+//! This library requires unstable features when the `alloc` or `arc` features are enabled and thus
+//! these features can only be used with a nightly compiler. The internally used features are:
 //! - `allocator_api` for the `alloc` feature
 //! - `get_mut_unchecked` for the `arc` feature
 //!
-//! When enabling the `alloc` or `std` feature, the user will be required to activate these features:
+//! Note that both of these features are enabled by default.  `arc` needs either the `std`
+//! or the `alloc` feature, otherwise it will not have any effect.
+//!
+//! When enabling the `alloc` feature, the user will be required to activate these features:
 //! - `allocator_api`
 //!
 //! # Overview
@@ -1212,7 +1215,14 @@ impl<T> InPlaceInit<T> for Box<T> {
     where
         E: From<AllocError>,
     {
-        Box::try_new_uninit()?.write_pin_init(init)
+        #[cfg(feature = "alloc")]
+        {
+            Box::try_new_uninit()?.write_pin_init(init)
+        }
+        #[cfg(not(feature = "alloc"))]
+        {
+            Box::new_uninit().write_pin_init(init)
+        }
     }
 
     #[inline]
@@ -1220,7 +1230,14 @@ impl<T> InPlaceInit<T> for Box<T> {
     where
         E: From<AllocError>,
     {
-        Box::try_new_uninit()?.write_init(init)
+        #[cfg(feature = "alloc")]
+        {
+            Box::try_new_uninit()?.write_init(init)
+        }
+        #[cfg(not(feature = "alloc"))]
+        {
+            Box::new_uninit().write_init(init)
+        }
     }
 }
 
@@ -1231,7 +1248,14 @@ impl<T> InPlaceInit<T> for Arc<T> {
     where
         E: From<AllocError>,
     {
-        Arc::try_new_uninit()?.write_pin_init(init)
+        #[cfg(feature = "alloc")]
+        {
+            Arc::try_new_uninit()?.write_pin_init(init)
+        }
+        #[cfg(not(feature = "alloc"))]
+        {
+            Arc::new_uninit().write_pin_init(init)
+        }
     }
 
     #[inline]
@@ -1239,7 +1263,14 @@ impl<T> InPlaceInit<T> for Arc<T> {
     where
         E: From<AllocError>,
     {
-        Arc::try_new_uninit()?.write_init(init)
+        #[cfg(feature = "alloc")]
+        {
+            Arc::try_new_uninit()?.write_init(init)
+        }
+        #[cfg(not(feature = "alloc"))]
+        {
+            Arc::new_uninit().write_init(init)
+        }
     }
 }
 
