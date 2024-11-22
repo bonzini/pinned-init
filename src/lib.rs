@@ -23,7 +23,6 @@
 //! This library requires unstable features when the `alloc` or `std` features are enabled and thus
 //! can only be used with a nightly compiler. The internally used features are:
 //! - `allocator_api`
-//! - `new_uninit`
 //! - `get_mut_unchecked`
 //!
 //! When enabling the `alloc` or `std` feature, the user will be required to activate these features:
@@ -237,7 +236,6 @@
 #![forbid(missing_docs, unsafe_op_in_unsafe_fn)]
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "alloc", feature(allocator_api))]
-#![cfg_attr(feature = "alloc", feature(new_uninit))]
 #![cfg_attr(feature = "alloc", feature(get_mut_unchecked))]
 
 #[cfg(feature = "alloc")]
@@ -747,6 +745,75 @@ macro_rules! try_init {
     };
 }
 
+/// Asserts that a field on a struct using `#[pin_data]` is marked with `#[pin]` ie. that it is
+/// structurally pinned.
+///
+/// # Example
+///
+/// This will succeed:
+/// ```
+/// use pinned_init::*;
+/// #[pin_data]
+/// struct MyStruct {
+///     #[pin]
+///     some_field: u64,
+/// }
+///
+/// assert_pinned!(MyStruct, some_field, u64);
+/// ```
+///
+/// This will fail:
+// TODO: replace with `compile_fail` when supported.
+/// ```ignore
+/// # use pinned_init::*;
+/// #[pin_data]
+/// struct MyStruct {
+///     some_field: u64,
+/// }
+///
+/// assert_pinned!(MyStruct, some_field, u64);
+/// ```
+///
+/// Some uses of the macro may trigger the `can't use generic parameters from outer item` error. To
+/// work around this, you may pass the `inline` parameter to the macro. The `inline` parameter can
+/// only be used when the macro is invoked from a function body.
+/// ```
+/// # use pinned_init::*;
+/// # use core::pin::Pin;
+/// #[pin_data]
+/// struct Foo<T> {
+///     #[pin]
+///     elem: T,
+/// }
+///
+/// impl<T> Foo<T> {
+///     fn project(self: Pin<&mut Self>) -> Pin<&mut T> {
+///         assert_pinned!(Foo<T>, elem, T, inline);
+///
+///         // SAFETY: The field is structurally pinned.
+///         unsafe { self.map_unchecked_mut(|me| &mut me.elem) }
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! assert_pinned {
+    ($ty:ty, $field:ident, $field_ty:ty, inline) => {
+        let _ = move |ptr: *mut $field_ty| {
+            // SAFETY: This code is unreachable.
+            let data = unsafe { <$ty as $crate::__internal::HasPinData>::__pin_data() };
+            let init = $crate::__internal::AlwaysFail::<$field_ty>::new();
+            // SAFETY: This code is unreachable.
+            unsafe { data.$field(ptr, init) }.ok();
+        };
+    };
+
+    ($ty:ty, $field:ident, $field_ty:ty) => {
+        const _: () = {
+            $crate::assert_pinned!($ty, $field, $field_ty, inline);
+        };
+    };
+}
+
 /// A pin-initializer for the type `T`.
 ///
 /// To use this initializer, you will need a suitable memory location that can hold a `T`. This can
@@ -826,11 +893,8 @@ where
         let val = unsafe { &mut *slot };
         // SAFETY: `slot` is considered pinned.
         let val = unsafe { Pin::new_unchecked(val) };
-        (self.1)(val).map_err(|e| {
-            // SAFETY: `slot` was initialized above.
-            unsafe { core::ptr::drop_in_place(slot) };
-            e
-        })
+        // SAFETY: `slot` was initialized above.
+        (self.1)(val).inspect_err(|_| unsafe { core::ptr::drop_in_place(slot) })
     }
 }
 
@@ -924,11 +988,9 @@ where
         // SAFETY: All requirements fulfilled since this function is `__init`.
         unsafe { self.0.__pinned_init(slot)? };
         // SAFETY: The above call initialized `slot` and we still have unique access.
-        (self.1)(unsafe { &mut *slot }).map_err(|e| {
+        (self.1)(unsafe { &mut *slot }).inspect_err(|_|
             // SAFETY: `slot` was initialized above.
-            unsafe { core::ptr::drop_in_place(slot) };
-            e
-        })
+            unsafe { core::ptr::drop_in_place(slot) })
     }
 }
 
@@ -1144,13 +1206,7 @@ impl<T> InPlaceInit<T> for Box<T> {
     where
         E: From<AllocError>,
     {
-        let mut this = Box::try_new_uninit()?;
-        let slot = this.as_mut_ptr();
-        // SAFETY: When init errors/panics, slot will get deallocated but not dropped,
-        // slot is valid and will not be moved, because we pin it later.
-        unsafe { init.__pinned_init(slot)? };
-        // SAFETY: All fields have been initialized.
-        Ok(unsafe { this.assume_init() }.into())
+        Box::try_new_uninit()?.write_pin_init(init)
     }
 
     #[inline]
@@ -1158,13 +1214,7 @@ impl<T> InPlaceInit<T> for Box<T> {
     where
         E: From<AllocError>,
     {
-        let mut this = Box::try_new_uninit()?;
-        let slot = this.as_mut_ptr();
-        // SAFETY: When init errors/panics, slot will get deallocated but not dropped,
-        // slot is valid.
-        unsafe { init.__init(slot)? };
-        // SAFETY: All fields have been initialized.
-        Ok(unsafe { this.assume_init() })
+        Box::try_new_uninit()?.write_init(init)
     }
 }
 
@@ -1175,14 +1225,7 @@ impl<T> InPlaceInit<T> for Arc<T> {
     where
         E: From<AllocError>,
     {
-        let mut this = Arc::try_new_uninit()?;
-        let slot = unsafe { Arc::get_mut_unchecked(&mut this) };
-        let slot = slot.as_mut_ptr();
-        // SAFETY: When init errors/panics, slot will get deallocated but not dropped,
-        // slot is valid and will not be moved, because we pin it later.
-        unsafe { init.__pinned_init(slot)? };
-        // SAFETY: All fields have been initialized and this is the only `Arc` to that data.
-        Ok(unsafe { Pin::new_unchecked(this.assume_init()) })
+        Arc::try_new_uninit()?.write_pin_init(init)
     }
 
     #[inline]
@@ -1190,14 +1233,71 @@ impl<T> InPlaceInit<T> for Arc<T> {
     where
         E: From<AllocError>,
     {
-        let mut this = Arc::try_new_uninit()?;
-        let slot = unsafe { Arc::get_mut_unchecked(&mut this) };
+        Arc::try_new_uninit()?.write_init(init)
+    }
+}
+
+/// Smart pointer containing uninitialized memory and that can write a value.
+pub trait InPlaceWrite<T> {
+    /// The type `Self` turns into when the contents are initialized.
+    type Initialized;
+
+    /// Use the given initializer to write a value into `self`.
+    ///
+    /// Does not drop the current value and considers it as uninitialized memory.
+    fn write_init<E>(self, init: impl Init<T, E>) -> Result<Self::Initialized, E>;
+
+    /// Use the given pin-initializer to write a value into `self`.
+    ///
+    /// Does not drop the current value and considers it as uninitialized memory.
+    fn write_pin_init<E>(self, init: impl PinInit<T, E>) -> Result<Pin<Self::Initialized>, E>;
+}
+
+#[cfg(feature = "alloc")]
+impl<T> InPlaceWrite<T> for Box<MaybeUninit<T>> {
+    type Initialized = Box<T>;
+
+    fn write_init<E>(mut self, init: impl Init<T, E>) -> Result<Self::Initialized, E> {
+        let slot = self.as_mut_ptr();
+        // SAFETY: When init errors/panics, slot will get deallocated but not dropped,
+        // slot is valid.
+        unsafe { init.__init(slot)? };
+        // SAFETY: All fields have been initialized.
+        Ok(unsafe { self.assume_init() })
+    }
+
+    fn write_pin_init<E>(mut self, init: impl PinInit<T, E>) -> Result<Pin<Self::Initialized>, E> {
+        let slot = self.as_mut_ptr();
+        // SAFETY: When init errors/panics, slot will get deallocated but not dropped,
+        // slot is valid and will not be moved, because we pin it later.
+        unsafe { init.__pinned_init(slot)? };
+        // SAFETY: All fields have been initialized.
+        Ok(unsafe { self.assume_init() }.into())
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<T> InPlaceWrite<T> for Arc<MaybeUninit<T>> {
+    type Initialized = Arc<T>;
+
+    fn write_init<E>(mut self, init: impl Init<T, E>) -> Result<Self::Initialized, E> {
+        let slot = unsafe { Arc::get_mut_unchecked(&mut self) };
         let slot = slot.as_mut_ptr();
         // SAFETY: When init errors/panics, slot will get deallocated but not dropped,
         // slot is valid.
         unsafe { init.__init(slot)? };
         // SAFETY: All fields have been initialized.
-        Ok(unsafe { this.assume_init() })
+        Ok(unsafe { self.assume_init() })
+    }
+
+    fn write_pin_init<E>(mut self, init: impl PinInit<T, E>) -> Result<Pin<Self::Initialized>, E> {
+        let slot = unsafe { Arc::get_mut_unchecked(&mut self) };
+        let slot = slot.as_mut_ptr();
+        // SAFETY: When init errors/panics, slot will get deallocated but not dropped,
+        // slot is valid and will not be moved, because we pin it later.
+        unsafe { init.__pinned_init(slot)? };
+        // SAFETY: All fields have been initialized and this is the only `Arc` to that data.
+        Ok(unsafe { Pin::new_unchecked(self.assume_init()) })
     }
 }
 
