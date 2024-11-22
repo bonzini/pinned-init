@@ -1226,7 +1226,7 @@ impl<T> InPlaceInit<T> for Box<T> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            Box::new_uninit().write_pin_init(init)
+            Box::new(MaybeUninit::<T>::uninit()).write_pin_init(init)
         }
     }
 
@@ -1241,7 +1241,7 @@ impl<T> InPlaceInit<T> for Box<T> {
         }
         #[cfg(not(feature = "alloc"))]
         {
-            Box::new_uninit().write_init(init)
+            Box::new(MaybeUninit::<T>::uninit()).write_init(init)
         }
     }
 }
@@ -1305,7 +1305,7 @@ impl<T> InPlaceWrite<T> for Box<MaybeUninit<T>> {
         // slot is valid.
         unsafe { init.__init(slot)? };
         // SAFETY: All fields have been initialized.
-        Ok(unsafe { self.assume_init() })
+        Ok(unsafe { Box::from_raw(Box::into_raw(self).cast::<T>()) })
     }
 
     fn write_pin_init<E>(mut self, init: impl PinInit<T, E>) -> Result<Pin<Self::Initialized>, E> {
@@ -1314,7 +1314,7 @@ impl<T> InPlaceWrite<T> for Box<MaybeUninit<T>> {
         // slot is valid and will not be moved, because we pin it later.
         unsafe { init.__pinned_init(slot)? };
         // SAFETY: All fields have been initialized.
-        Ok(unsafe { self.assume_init() }.into())
+        Ok(unsafe { Box::from_raw(Box::into_raw(self).cast::<T>()) }.into())
     }
 }
 
