@@ -21,6 +21,7 @@ pinned-init-macro = { path = "./pinned-init-macro", version = "=0.0.5" }
 default = ["std", "arc"]
 std = ["alloc"]
 alloc = []
+# needs alloc (either directly or via std) to provide anything useful
 arc = ["alloc"]
 
 [dev-dependencies]

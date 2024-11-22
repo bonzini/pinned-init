@@ -129,7 +129,7 @@ mod pthread_mtx {
 
 #[cfg_attr(test, test)]
 fn main() {
-    #[cfg(all(feature = "arc", not(windows)))]
+    #[cfg(all(HAVE_ALLOCATION, feature = "arc", not(windows)))]
     {
         use core::pin::Pin;
         use pinned_init::*;
