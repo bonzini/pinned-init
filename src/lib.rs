@@ -62,7 +62,8 @@
 //! [`pin_init!`]. The syntax is almost the same as normal `struct` initializers. The difference is
 //! that you need to write `<-` instead of `:` for fields that you want to initialize in-place.
 //!
-//! ```rust
+#![cfg_attr(feature = "alloc", doc = "```rust")]
+#![cfg_attr(not(feature = "alloc"), doc = "```ignore")]
 //! # #![allow(clippy::disallowed_names)]
 //! # #![feature(allocator_api)]
 //! use pinned_init::*;
@@ -85,7 +86,8 @@
 //! `foo` now is of the type [`impl PinInit<Foo>`]. We can now use any smart pointer that we like
 //! (or just the stack) to actually initialize a `Foo`:
 //!
-//! ```rust
+#![cfg_attr(feature = "alloc", doc = "```rust")]
+#![cfg_attr(not(feature = "alloc"), doc = "```ignore")]
 //! # #![allow(clippy::disallowed_names)]
 //! # #![feature(allocator_api)]
 //! # #[path = "../examples/mutex.rs"] mod mutex; use mutex::*;
@@ -111,7 +113,8 @@
 //! Many types that use this library supply a function/macro that returns an initializer, because
 //! the above method only works for types where you can access the fields.
 //!
-//! ```rust
+#![cfg_attr(feature = "alloc", doc = "```rust")]
+#![cfg_attr(not(feature = "alloc"), doc = "```ignore")]
 //! # #![feature(allocator_api)]
 //! # #[path = "../examples/mutex.rs"] mod mutex; use mutex::*;
 //! # use pinned_init::*;
@@ -122,7 +125,8 @@
 //!
 //! To declare an init macro/function you just return an [`impl PinInit<T, E>`]:
 //!
-//! ```rust
+#![cfg_attr(feature = "alloc", doc = "```rust")]
+#![cfg_attr(not(feature = "alloc"), doc = "```ignore")]
 //! # #![allow(clippy::disallowed_names)]
 //! # #![feature(allocator_api)]
 //! # use pinned_init::*;
@@ -159,12 +163,12 @@
 //!   `slot` gets called.
 //!
 //! ```rust
-//! # #![feature(extern_types)]
 //! use pinned_init::*;
 //! use core::{ptr::addr_of_mut, marker::PhantomPinned, cell::UnsafeCell, pin::Pin};
 //! mod bindings {
+//!     #[allow(non_camel_case_types)]
+//!     pub struct foo([u8; 0]);
 //!     extern "C" {
-//!         pub type foo;
 //!         pub fn init_foo(ptr: *mut foo);
 //!         pub fn destroy_foo(ptr: *mut foo);
 //!         #[must_use = "you must check the error return code"]
@@ -280,7 +284,8 @@ pub use pinned_init_macro::{pin_data, pinned_drop, Zeroable};
 ///
 /// # Examples
 ///
-/// ```rust
+#[cfg_attr(feature = "alloc", doc = "```rust")]
+#[cfg_attr(not(feature = "alloc"), doc = "```ignore")]
 /// # #![allow(clippy::disallowed_names)]
 /// # #![feature(allocator_api)]
 /// # #[path = "../examples/mutex.rs"] mod mutex; use mutex::*;
@@ -332,7 +337,8 @@ macro_rules! stack_pin_init {
 ///
 /// # Examples
 ///
-/// ```rust
+#[cfg_attr(feature = "alloc", doc = "```rust")]
+#[cfg_attr(not(feature = "alloc"), doc = "```ignore")]
 /// # #![allow(clippy::disallowed_names)]
 /// # #![feature(allocator_api)]
 /// # #[path = "../examples/mutex.rs"] mod mutex; use mutex::*;
@@ -358,7 +364,8 @@ macro_rules! stack_pin_init {
 /// println!("a: {}", &*foo.a.lock());
 /// ```
 ///
-/// ```rust
+#[cfg_attr(feature = "alloc", doc = "```rust")]
+#[cfg_attr(not(feature = "alloc"), doc = "```ignore")]
 /// # #![allow(clippy::disallowed_names)]
 /// # #![feature(allocator_api)]
 /// # #[path = "../examples/mutex.rs"] mod mutex; use mutex::*;
@@ -617,7 +624,8 @@ macro_rules! pin_init {
 ///
 /// # Examples
 ///
-/// ```rust
+#[cfg_attr(feature = "alloc", doc = "```rust")]
+#[cfg_attr(not(feature = "alloc"), doc = "```ignore")]
 /// # #![feature(allocator_api)]
 /// # #[path = "../examples/error.rs"] mod error; use error::Error;
 /// use pinned_init::*;
@@ -673,7 +681,8 @@ macro_rules! try_pin_init {
 ///
 /// # Examples
 ///
-/// ```rust
+#[cfg_attr(feature = "alloc", doc = "```rust")]
+#[cfg_attr(not(feature = "alloc"), doc = "```ignore")]
 /// # #![feature(allocator_api)]
 /// # #[path = "../examples/mutex.rs"] mod mutex; use mutex::*;
 /// use pinned_init::*;
@@ -718,7 +727,8 @@ macro_rules! init {
 ///
 /// # Examples
 ///
-/// ```rust
+#[cfg_attr(feature = "alloc", doc = "```rust")]
+#[cfg_attr(not(feature = "alloc"), doc = "```ignore")]
 /// # #![feature(allocator_api)]
 /// # use core::alloc::AllocError;
 /// use pinned_init::*;
@@ -865,7 +875,8 @@ pub unsafe trait PinInit<T: ?Sized, E = Infallible>: Sized {
     ///
     /// # Examples
     ///
-    /// ```rust
+    #[cfg_attr(feature = "alloc", doc = "```rust")]
+    #[cfg_attr(not(feature = "alloc"), doc = "```ignore")]
     /// # #![feature(allocator_api)]
     /// # #[path = "../examples/mutex.rs"] mod mutex; use mutex::*;
     /// # use pinned_init::*;
@@ -1113,7 +1124,8 @@ where
 ///
 /// # Examples
 ///
-/// ```rust
+#[cfg_attr(feature = "alloc", doc = "```rust")]
+#[cfg_attr(not(feature = "alloc"), doc = "```ignore")]
 /// # #![feature(allocator_api)]
 /// # #[path = "../examples/mutex.rs"] mod mutex; use mutex::*;
 /// # use pinned_init::*;
@@ -1347,7 +1359,8 @@ impl<T> InPlaceWrite<T> for Arc<MaybeUninit<T>> {
 ///
 /// Use [`pinned_drop`] to implement this trait safely:
 ///
-/// ```rust
+#[cfg_attr(feature = "alloc", doc = "```rust")]
+#[cfg_attr(not(feature = "alloc"), doc = "```ignore")]
 /// # #![feature(allocator_api)]
 /// # #[path = "../examples/mutex.rs"] mod mutex; use mutex::*;
 /// # use pinned_init::*;
