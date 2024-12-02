@@ -1,4 +1,5 @@
 #![cfg_attr(feature = "alloc", feature(allocator_api))]
+#![cfg_attr(any(miri, NO_ALLOC_FAIL_TESTS, target_os = "macos"), allow(dead_code, unused_imports))]
 
 #[cfg(feature = "alloc")]
 use core::alloc::AllocError;
