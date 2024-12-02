@@ -1,3 +1,4 @@
+#![allow(clippy::undocumented_unsafe_blocks)]
 #![cfg_attr(feature = "alloc", feature(allocator_api))]
 
 use core::{
@@ -10,10 +11,7 @@ use core::{
 use pinned_init::*;
 use std::sync::Arc;
 
-#[path = "../examples/mutex.rs"]
-mod mutex;
-use mutex::*;
-
+#[expect(unused_attributes)]
 #[path = "../examples/error.rs"]
 mod error;
 use error::Error;
@@ -62,7 +60,7 @@ impl<T, const SIZE: usize> RingBuffer<T, SIZE> {
         // SAFETY: We do not move `this`.
         let this = unsafe { self.get_unchecked_mut() };
         let next_head = unsafe { this.advance(this.head) };
-        // SAFETY: `head` and `tail` point into the same buffer.
+        // `head` and `tail` point into the same buffer.
         if ptr::eq(next_head, this.tail) {
             // We cannot advance `head`, since `next_head` would point to the same slot as `tail`,
             // which is currently live.
@@ -102,8 +100,12 @@ impl<T, const SIZE: usize> RingBuffer<T, SIZE> {
         Some(unsafe { init_from_closure(remove_init) })
     }
 
+    /// # Safety
+    ///
+    /// TODO
     unsafe fn advance(&mut self, ptr: *mut T) -> *mut T {
-        let ptr = ptr.add(1);
+        // SAFETY: ptr's offset from buffer is < SIZE
+        let ptr = unsafe { ptr.add(1) };
         let origin: *mut _ = addr_of_mut!(self.buffer);
         let origin = origin.cast::<T>();
         let offset = unsafe { ptr.offset_from(origin) };
@@ -118,7 +120,7 @@ impl<T, const SIZE: usize> RingBuffer<T, SIZE> {
 #[test]
 fn on_stack() -> Result<(), Infallible> {
     stack_pin_init!(let buf = RingBuffer::<u8, 64>::new());
-    while let Some(elem) = buf.as_mut().pop() {
+    if let Some(elem) = buf.as_mut().pop() {
         panic!("found in empty buffer!: {elem}");
     }
     assert!(buf.as_mut().push(10));
@@ -237,6 +239,7 @@ fn with_failing_inner() {
     assert_eq!(buf.as_mut().pop(), None);
 }
 
+#[cfg_attr(miri, allow(dead_code))]
 #[derive(Debug)]
 struct BigStruct {
     buf: [u8; 1024 * 1024],
@@ -261,6 +264,11 @@ fn big_struct() {
 #[cfg(all(any(feature = "std", feature = "alloc"), not(miri)))]
 #[test]
 fn with_big_struct() {
+    #[expect(unused_attributes)]
+    #[path = "../examples/mutex.rs"]
+    mod mutex;
+    use mutex::*;
+
     let buf = Arc::pin_init(CMutex::new(RingBuffer::<BigStruct, 64>::new())).unwrap();
     let mut buf = buf.lock();
     for _ in 0..63 {
@@ -280,6 +288,28 @@ fn with_big_struct() {
         Ok(false)
     );
     for _ in 0..63 {
-        assert!(matches!(buf.as_mut().pop_no_stack(), Some(_)));
+        assert!(buf.as_mut().pop_no_stack().is_some());
     }
+}
+
+#[cfg(all(
+    feature = "alloc",
+    not(miri),
+    not(NO_ALLOC_FAIL_TESTS),
+    not(target_os = "macos")
+))]
+#[test]
+fn too_big_pinned() {
+    use core::alloc::AllocError;
+
+    // should be too big with current hardware.
+    assert!(matches!(
+        Box::pin_init(RingBuffer::<u8, { 1024 * 1024 * 1024 * 1024 }>::new()),
+        Err(AllocError)
+    ));
+    // should be too big with current hardware.
+    assert!(matches!(
+        Arc::pin_init(RingBuffer::<u8, { 1024 * 1024 * 1024 * 1024 }>::new()),
+        Err(AllocError)
+    ));
 }

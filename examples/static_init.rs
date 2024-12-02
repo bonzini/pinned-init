@@ -1,3 +1,4 @@
+#![allow(clippy::undocumented_unsafe_blocks)]
 #![cfg_attr(feature = "alloc", feature(allocator_api))]
 
 use core::{
@@ -13,6 +14,7 @@ use std::{
     thread::{sleep, Builder},
 };
 
+#[expect(unused_attributes)]
 mod mutex;
 use mutex::*;
 
