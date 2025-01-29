@@ -1,3 +1,4 @@
+#![allow(clippy::undocumented_unsafe_blocks)]
 #![cfg_attr(feature = "alloc", feature(allocator_api))]
 
 use core::{
@@ -9,8 +10,10 @@ use core::{
 };
 
 use pinned_init::*;
+
+#[expect(unused_attributes)]
 mod error;
-pub use error::Error;
+use error::Error;
 
 #[pin_data(PinnedDrop)]
 #[repr(C)]
@@ -89,6 +92,12 @@ impl PinnedDrop for ListHead {
 struct Link(Cell<NonNull<ListHead>>);
 
 impl Link {
+    /// # Safety
+    ///
+    /// The contents of the pointer should form a consistent circular
+    /// linked list; for example, a "next" link should be pointed back
+    /// by the target `ListHead`'s "prev" link and a "prev" link should be
+    /// pointed back by the target `ListHead`'s "next" link.
     #[inline]
     unsafe fn new_unchecked(ptr: NonNull<ListHead>) -> Self {
         Self(Cell::new(ptr))

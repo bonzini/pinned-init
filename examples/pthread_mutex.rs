@@ -1,4 +1,5 @@
 // inspired by https://github.com/nbdd0121/pin-init/blob/trunk/examples/pthread_mutex.rs
+#![allow(clippy::undocumented_unsafe_blocks)]
 #![cfg_attr(feature = "alloc", feature(allocator_api))]
 #[cfg(not(windows))]
 mod pthread_mtx {
@@ -37,6 +38,7 @@ mod pthread_mtx {
 
     #[derive(Debug)]
     pub enum Error {
+        #[expect(dead_code)]
         IO(std::io::Error),
         Alloc,
     }
@@ -108,14 +110,14 @@ mod pthread_mtx {
         mtx: &'a PThreadMutex<T>,
     }
 
-    impl<'a, T> Drop for PThreadMutexGuard<'a, T> {
+    impl<T> Drop for PThreadMutexGuard<'_, T> {
         fn drop(&mut self) {
             // SAFETY: raw is always initialized
             unsafe { libc::pthread_mutex_unlock(self.mtx.raw.get()) };
         }
     }
 
-    impl<'a, T> Deref for PThreadMutexGuard<'a, T> {
+    impl<T> Deref for PThreadMutexGuard<'_, T> {
         type Target = T;
 
         fn deref(&self) -> &Self::Target {
@@ -123,7 +125,7 @@ mod pthread_mtx {
         }
     }
 
-    impl<'a, T> DerefMut for PThreadMutexGuard<'a, T> {
+    impl<T> DerefMut for PThreadMutexGuard<'_, T> {
         fn deref_mut(&mut self) -> &mut Self::Target {
             unsafe { &mut *self.mtx.data.get() }
         }
